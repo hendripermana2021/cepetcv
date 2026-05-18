@@ -33,12 +33,50 @@ export interface Project {
   technologies: string;
 }
 
+export interface Certification {
+  id: string;
+  name: string;
+  issuer: string;
+  issueDate: string;
+  credentialId?: string;
+  url?: string;
+}
+
+export interface Reference {
+  id: string;
+  name: string;
+  title: string;
+  company: string;
+  email?: string;
+  phone?: string;
+  relation?: string;
+}
+
+export type CVFormat = 'id' | 'us' | 'eu' | 'uk';
+export type CVTemplate = 'classic' | 'modern' | 'minimal';
+export type CVFont = 'arial' | 'georgia' | 'poppins';
+
 export interface CVData {
   name: string;
   title: string;
   email: string;
   phone: string;
   location: string;
+  nationality?: string;
+  desiredCountry?: string;
+  cvFormat: CVFormat;
+  template: CVTemplate;
+  fontFamily: CVFont;
+  primaryColor: string;
+  accentColor: string;
+  willingToRelocate: boolean;
+  remotePreference?: string;
+  targetRole: string;
+  targetKeywords: string;
+  workAuthorization?: string;
+  expectedSalary?: string;
+  salaryCurrency?: string;
+  noticePeriod?: string;
   website?: string;
   linkedin?: string;
   summary: string;
@@ -47,6 +85,8 @@ export interface CVData {
   skills: string;
   languages: Language[];
   projects: Project[];
+  certifications: Certification[];
+  references: Reference[];
 }
 
 export const defaultCVData: CVData = {
@@ -55,6 +95,21 @@ export const defaultCVData: CVData = {
   email: '',
   phone: '',
   location: '',
+  nationality: '',
+  desiredCountry: '',
+  cvFormat: 'id',
+  template: 'classic',
+  fontFamily: 'arial',
+  primaryColor: '#1a365d',
+  accentColor: '#2563eb',
+  willingToRelocate: false,
+  remotePreference: '',
+  targetRole: '',
+  targetKeywords: '',
+  workAuthorization: '',
+  expectedSalary: '',
+  salaryCurrency: '',
+  noticePeriod: '',
   website: '',
   linkedin: '',
   summary: '',
@@ -63,4 +118,6 @@ export const defaultCVData: CVData = {
   skills: '',
   languages: [],
   projects: [],
+  certifications: [],
+  references: [],
 };

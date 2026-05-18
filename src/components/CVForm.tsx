@@ -1,11 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   User, FileText, Briefcase, GraduationCap,
-  Wrench, Globe, FolderOpen, Trash2,
+  Wrench, Globe, FolderOpen, Trash2, Target, Palette, ChevronLeft, ChevronRight,
 } from 'lucide-react';
-import { CVData, Experience, Education, Language, Project } from '@/types/cv';
+import {
+  CVData,
+  CVFormat,
+  CVTemplate,
+  CVFont,
+  Experience,
+  Education,
+  Language,
+  Project,
+  Certification,
+  Reference,
+} from '@/types/cv';
 import { Lang } from '@/lib/i18n';
 import translations from '@/lib/i18n';
 
@@ -15,7 +26,19 @@ interface Props {
   lang: Lang;
 }
 
-type TabId = 'personal' | 'summary' | 'experience' | 'education' | 'skills' | 'languages' | 'projects';
+type TabId =
+  | 'personal'
+  | 'summary'
+  | 'experience'
+  | 'education'
+  | 'skills'
+  | 'languages'
+  | 'projects'
+  | 'international'
+  | 'design'
+  | 'ats'
+  | 'certifications'
+  | 'references';
 
 function genId() {
   return Math.random().toString(36).slice(2, 10);
@@ -33,7 +56,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 const inputCls =
-  'w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white';
+  'w-full px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 caret-black border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white';
 
 function TextInput({
   label, value, onChange, placeholder, type = 'text',
@@ -114,7 +137,14 @@ function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
 
 export default function CVForm({ data, onChange, lang }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>('personal');
+  const tabScrollRef = useRef<HTMLDivElement | null>(null);
   const tr = translations[lang];
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    if (!tabScrollRef.current) return;
+    const offset = direction === 'left' ? -240 : 240;
+    tabScrollRef.current.scrollBy({ left: offset, behavior: 'smooth' });
+  };
 
   const tabs: { id: TabId; Icon: React.ElementType; label: string }[] = [
     { id: 'personal', Icon: User, label: tr.personalInfo },
@@ -124,6 +154,11 @@ export default function CVForm({ data, onChange, lang }: Props) {
     { id: 'skills', Icon: Wrench, label: tr.skills },
     { id: 'languages', Icon: Globe, label: tr.languages },
     { id: 'projects', Icon: FolderOpen, label: tr.projects },
+    { id: 'international', Icon: Globe, label: tr.international },
+    { id: 'design', Icon: Palette, label: tr.design },
+    { id: 'ats', Icon: Target, label: tr.ats },
+    { id: 'certifications', Icon: FileText, label: tr.certifications },
+    { id: 'references', Icon: User, label: tr.references },
   ];
 
   // ── Experience ──────────────────────────────────────────────────────────────
@@ -180,24 +215,90 @@ export default function CVForm({ data, onChange, lang }: Props) {
   const delProj = (id: string) =>
     onChange({ projects: data.projects.filter((p) => p.id !== id) });
 
+  // ── Certifications ─────────────────────────────────────────────────────────
+  const addCert = () =>
+    onChange({
+      certifications: [
+        ...data.certifications,
+        { id: genId(), name: '', issuer: '', issueDate: '', credentialId: '', url: '' },
+      ],
+    });
+
+  const updCert = (id: string, field: keyof Certification, value: string) =>
+    onChange({
+      certifications: data.certifications.map((c) => (c.id === id ? { ...c, [field]: value } : c)),
+    });
+
+  const delCert = (id: string) =>
+    onChange({ certifications: data.certifications.filter((c) => c.id !== id) });
+
+  // ── References ─────────────────────────────────────────────────────────────
+  const addRef = () =>
+    onChange({
+      references: [
+        ...data.references,
+        { id: genId(), name: '', title: '', company: '', email: '', phone: '', relation: '' },
+      ],
+    });
+
+  const updRef = (id: string, field: keyof Reference, value: string) =>
+    onChange({
+      references: data.references.map((r) => (r.id === id ? { ...r, [field]: value } : r)),
+    });
+
+  const delRef = (id: string) =>
+    onChange({ references: data.references.filter((r) => r.id !== id) });
+
   return (
     <div className="flex flex-col h-full">
       {/* Tab nav */}
-      <div className="flex overflow-x-auto border-b border-gray-100 bg-gray-50/80 scrollbar-hide shrink-0">
-        {tabs.map(({ id, Icon, label }) => (
-          <button
-            key={id}
-            onClick={() => setActiveTab(id)}
-            className={`flex flex-col items-center gap-1 px-4 py-3 text-xs font-medium whitespace-nowrap shrink-0 border-b-2 transition-colors ${
-              activeTab === id
-                ? 'text-blue-600 border-blue-600 bg-white'
-                : 'text-gray-400 border-transparent hover:text-gray-600'
-            }`}
-          >
-            <Icon size={15} />
-            {label}
-          </button>
-        ))}
+      <div className="relative border-b border-gray-100 bg-gray-50/80 shrink-0">
+        <button
+          type="button"
+          onClick={() => scrollTabs('left')}
+          className="hidden lg:flex absolute left-1 top-1/2 -translate-y-1/2 z-10 h-8 w-8 items-center justify-center rounded-full bg-white border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-200 shadow-sm"
+          aria-label="Geser menu ke kiri"
+          title="Geser menu ke kiri"
+        >
+          <ChevronLeft size={16} />
+        </button>
+
+        <div
+          ref={tabScrollRef}
+          onWheel={(e) => {
+            if (!tabScrollRef.current) return;
+            if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+              e.preventDefault();
+              tabScrollRef.current.scrollLeft += e.deltaY;
+            }
+          }}
+          className="flex overflow-x-auto border-gray-100 scrollbar-hide px-0 lg:px-10"
+        >
+          {tabs.map(({ id, Icon, label }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`flex flex-col items-center gap-1 px-4 py-3 text-xs font-medium whitespace-nowrap shrink-0 border-b-2 transition-colors ${
+                activeTab === id
+                  ? 'text-blue-600 border-blue-600 bg-white'
+                  : 'text-gray-400 border-transparent hover:text-gray-600'
+              }`}
+            >
+              <Icon size={15} />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => scrollTabs('right')}
+          className="hidden lg:flex absolute right-1 top-1/2 -translate-y-1/2 z-10 h-8 w-8 items-center justify-center rounded-full bg-white border border-gray-200 text-gray-500 hover:text-blue-600 hover:border-blue-200 shadow-sm"
+          aria-label="Geser menu ke kanan"
+          title="Geser menu ke kanan"
+        >
+          <ChevronRight size={16} />
+        </button>
       </div>
 
       {/* Form body */}
@@ -213,6 +314,7 @@ export default function CVForm({ data, onChange, lang }: Props) {
               <TextInput label={tr.phone} value={data.phone} onChange={(v) => onChange({ phone: v })} placeholder="+62 812-3456-7890" />
             </div>
             <TextInput label={tr.location} value={data.location} onChange={(v) => onChange({ location: v })} placeholder="Jakarta, Indonesia" />
+            <TextInput label={tr.nationality} value={data.nationality ?? ''} onChange={(v) => onChange({ nationality: v })} placeholder="Indonesia" />
             <TextInput label={tr.website} value={data.website ?? ''} onChange={(v) => onChange({ website: v })} placeholder="https://budisantoso.dev" />
             <TextInput label={tr.linkedin} value={data.linkedin ?? ''} onChange={(v) => onChange({ linkedin: v })} placeholder="linkedin.com/in/budisantoso" />
           </div>
@@ -326,6 +428,192 @@ export default function CVForm({ data, onChange, lang }: Props) {
               </ItemCard>
             ))}
             <AddButton label={tr.addProject} onClick={addProj} />
+          </div>
+        )}
+
+        {/* ── International ───────────────────────────────────── */}
+        {activeTab === 'international' && (
+          <div>
+            <Field label={tr.cvFormat}>
+              <select
+                value={data.cvFormat}
+                onChange={(e) => onChange({ cvFormat: e.target.value as CVFormat })}
+                className={inputCls}
+              >
+                <option value="id">{tr.cvFormatLabels.id}</option>
+                <option value="us">{tr.cvFormatLabels.us}</option>
+                <option value="eu">{tr.cvFormatLabels.eu}</option>
+                <option value="uk">{tr.cvFormatLabels.uk}</option>
+              </select>
+            </Field>
+            <p className="text-xs text-gray-400 -mt-2 mb-3">{tr.cvFormatHint}</p>
+            <TextInput
+              label={tr.desiredCountry}
+              value={data.desiredCountry ?? ''}
+              onChange={(v) => onChange({ desiredCountry: v })}
+              placeholder={lang === 'id' ? 'Contoh: Singapore, Australia, Germany' : 'e.g. Singapore, Australia, Germany'}
+            />
+            <Field label={tr.remotePreference}>
+              <select
+                value={data.remotePreference ?? ''}
+                onChange={(e) => onChange({ remotePreference: e.target.value })}
+                className={inputCls}
+              >
+                <option value="">{lang === 'id' ? 'Pilih preferensi kerja' : 'Select work preference'}</option>
+                {tr.remoteOptions.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </Field>
+            <label className="flex items-center gap-2 text-sm text-gray-600 mb-4 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={data.willingToRelocate}
+                onChange={(e) => onChange({ willingToRelocate: e.target.checked })}
+                className="rounded"
+              />
+              {tr.willingToRelocate}
+            </label>
+          </div>
+        )}
+
+        {/* ── Design ──────────────────────────────────────────── */}
+        {activeTab === 'design' && (
+          <div>
+            <Field label={tr.template}>
+              <select
+                value={data.template}
+                onChange={(e) => onChange({ template: e.target.value as CVTemplate })}
+                className={inputCls}
+              >
+                <option value="classic">{tr.templateLabels.classic}</option>
+                <option value="modern">{tr.templateLabels.modern}</option>
+                <option value="minimal">{tr.templateLabels.minimal}</option>
+              </select>
+            </Field>
+
+            <Field label={tr.fontFamily}>
+              <select
+                value={data.fontFamily}
+                onChange={(e) => onChange({ fontFamily: e.target.value as CVFont })}
+                className={inputCls}
+              >
+                <option value="arial">{tr.fontLabels.arial}</option>
+                <option value="georgia">{tr.fontLabels.georgia}</option>
+                <option value="poppins">{tr.fontLabels.poppins}</option>
+              </select>
+            </Field>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={tr.primaryColor}>
+                <input
+                  type="color"
+                  value={data.primaryColor}
+                  onChange={(e) => onChange({ primaryColor: e.target.value })}
+                  className="w-full h-11 border border-gray-200 rounded-lg bg-white p-1"
+                />
+              </Field>
+              <Field label={tr.accentColor}>
+                <input
+                  type="color"
+                  value={data.accentColor}
+                  onChange={(e) => onChange({ accentColor: e.target.value })}
+                  className="w-full h-11 border border-gray-200 rounded-lg bg-white p-1"
+                />
+              </Field>
+            </div>
+          </div>
+        )}
+
+        {/* ── ATS ─────────────────────────────────────────────── */}
+        {activeTab === 'ats' && (
+          <div>
+            <TextInput
+              label={tr.targetRole}
+              value={data.targetRole}
+              onChange={(v) => onChange({ targetRole: v })}
+              placeholder={lang === 'id' ? 'Contoh: Senior Frontend Engineer' : 'e.g. Senior Frontend Engineer'}
+            />
+            <Textarea
+              label={tr.targetKeywords}
+              value={data.targetKeywords}
+              onChange={(v) => onChange({ targetKeywords: v })}
+              placeholder={lang === 'id' ? 'React, TypeScript, Next.js, Leadership, SQL' : 'React, TypeScript, Next.js, Leadership, SQL'}
+              rows={3}
+            />
+            <p className="text-xs text-gray-400 -mt-2 mb-3">{tr.targetKeywordsHint}</p>
+
+            <TextInput
+              label={tr.workAuthorization}
+              value={data.workAuthorization ?? ''}
+              onChange={(v) => onChange({ workAuthorization: v })}
+              placeholder={lang === 'id' ? 'Contoh: KITAS, PR, Citizen, Visa sponsorship needed' : 'e.g. Citizen, PR, Visa sponsorship needed'}
+            />
+
+            <div className="grid grid-cols-2 gap-3">
+              <TextInput
+                label={tr.expectedSalary}
+                value={data.expectedSalary ?? ''}
+                onChange={(v) => onChange({ expectedSalary: v })}
+                placeholder={lang === 'id' ? 'Contoh: 20.000.000 / month' : 'e.g. 6500 / month'}
+              />
+              <Field label={tr.salaryCurrency}>
+                <select
+                  value={data.salaryCurrency ?? ''}
+                  onChange={(e) => onChange({ salaryCurrency: e.target.value })}
+                  className={inputCls}
+                >
+                  <option value="">{lang === 'id' ? 'Pilih mata uang' : 'Select currency'}</option>
+                  {tr.salaryCurrencyOptions.map((currency) => (
+                    <option key={currency} value={currency}>{currency}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+
+            <TextInput
+              label={tr.noticePeriod}
+              value={data.noticePeriod ?? ''}
+              onChange={(v) => onChange({ noticePeriod: v })}
+              placeholder={lang === 'id' ? 'Contoh: Immediate / 1 month / 2 weeks' : 'e.g. Immediate / 1 month / 2 weeks'}
+            />
+          </div>
+        )}
+
+        {/* ── Certifications ──────────────────────────────────── */}
+        {activeTab === 'certifications' && (
+          <div>
+            {data.certifications.map((c, i) => (
+              <ItemCard key={c.id} index={i} label={tr.certifications} onRemove={() => delCert(c.id)}>
+                <TextInput label={tr.certName} value={c.name} onChange={(v) => updCert(c.id, 'name', v)} />
+                <TextInput label={tr.certIssuer} value={c.issuer} onChange={(v) => updCert(c.id, 'issuer', v)} />
+                <TextInput label={tr.certIssueDate} value={c.issueDate} onChange={(v) => updCert(c.id, 'issueDate', v)} placeholder="2025" />
+                <TextInput label={tr.certCredentialId} value={c.credentialId ?? ''} onChange={(v) => updCert(c.id, 'credentialId', v)} />
+                <TextInput label={tr.certUrl} value={c.url ?? ''} onChange={(v) => updCert(c.id, 'url', v)} placeholder="https://..." />
+              </ItemCard>
+            ))}
+            <AddButton label={tr.addCertification} onClick={addCert} />
+          </div>
+        )}
+
+        {/* ── References ──────────────────────────────────────── */}
+        {activeTab === 'references' && (
+          <div>
+            {data.references.map((r, i) => (
+              <ItemCard key={r.id} index={i} label={tr.references} onRemove={() => delRef(r.id)}>
+                <TextInput label={tr.refName} value={r.name} onChange={(v) => updRef(r.id, 'name', v)} />
+                <div className="grid grid-cols-2 gap-3">
+                  <TextInput label={tr.refTitle} value={r.title} onChange={(v) => updRef(r.id, 'title', v)} />
+                  <TextInput label={tr.refCompany} value={r.company} onChange={(v) => updRef(r.id, 'company', v)} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <TextInput label={tr.email} value={r.email ?? ''} onChange={(v) => updRef(r.id, 'email', v)} placeholder="name@company.com" />
+                  <TextInput label={tr.phone} value={r.phone ?? ''} onChange={(v) => updRef(r.id, 'phone', v)} placeholder="+62..." />
+                </div>
+                <TextInput label={tr.refRelation} value={r.relation ?? ''} onChange={(v) => updRef(r.id, 'relation', v)} />
+              </ItemCard>
+            ))}
+            <AddButton label={tr.addReference} onClick={addRef} />
           </div>
         )}
       </div>

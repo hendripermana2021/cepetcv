@@ -1,19 +1,51 @@
 'use client';
 
-import { useState } from 'react';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import { Download, Eye, Edit3, Globe, RotateCcw } from 'lucide-react';
 import CVForm from '@/components/CVForm';
 import CVPreview from '@/components/CVPreview';
 import { useCV } from '@/hooks/useCV';
 import { useLang } from '@/hooks/useLang';
 import translations from '@/lib/i18n';
+import { globalPreset, indonesiaPreset } from '@/lib/presets';
 
 export default function BuilderPage() {
   const { cvData, updateCV, resetCV, loaded } = useCV();
   const { lang, toggleLang } = useLang();
   const [activeView, setActiveView] = useState<'form' | 'preview'>('form');
   const [isExporting, setIsExporting] = useState(false);
+  const [formWidth, setFormWidth] = useState(42);
+  const [isResizing, setIsResizing] = useState(false);
+  const mainRef = useRef<HTMLElement | null>(null);
   const tr = translations[lang];
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!mainRef.current) return;
+      const rect = mainRef.current.getBoundingClientRect();
+      const next = ((e.clientX - rect.left) / rect.width) * 100;
+      const clamped = Math.max(30, Math.min(70, next));
+      setFormWidth(clamped);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing]);
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -29,6 +61,11 @@ export default function BuilderPage() {
     if (confirm('Reset semua data CV? Tindakan ini tidak bisa dibatalkan.')) {
       resetCV();
     }
+  };
+
+  const handleQuickFill = (mode: 'id' | 'global') => {
+    if (!confirm(tr.confirmQuickFill)) return;
+    updateCV(mode === 'id' ? indonesiaPreset : globalPreset);
   };
 
   if (!loaded) {
@@ -48,6 +85,20 @@ export default function BuilderPage() {
         </a>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleQuickFill('id')}
+            className="hidden md:inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors font-medium border border-blue-100"
+          >
+            {tr.quickFillId}
+          </button>
+
+          <button
+            onClick={() => handleQuickFill('global')}
+            className="hidden md:inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 px-3 py-2 rounded-lg hover:bg-indigo-50 transition-colors font-medium border border-indigo-100"
+          >
+            {tr.quickFillGlobal}
+          </button>
+
           <button
             onClick={handleReset}
             className="p-2 text-gray-400 hover:text-red-500 hover:bg-gray-100 rounded-lg transition-colors"
@@ -100,19 +151,35 @@ export default function BuilderPage() {
       </div>
 
       {/* ── Main ───────────────────────────────────────────────── */}
-      <main className="flex flex-1 overflow-hidden">
+      <main
+        ref={mainRef}
+        className="flex flex-1 overflow-hidden"
+        style={{ '--form-width': `${formWidth}%` } as CSSProperties}
+      >
         {/* Form panel */}
         <div
-          className={`w-full lg:w-[42%] flex flex-col overflow-hidden bg-white border-r border-gray-200 ${
+          className={`w-full lg:w-[var(--form-width)] lg:flex-none flex flex-col overflow-hidden bg-white border-r border-gray-200 ${
             activeView === 'preview' ? 'hidden lg:flex' : 'flex'
           }`}
         >
           <CVForm data={cvData} onChange={updateCV} lang={lang} />
         </div>
 
+        {/* Draggable divider (desktop) */}
+        <div
+          className="hidden lg:flex w-2 shrink-0 items-center justify-center bg-gray-100 hover:bg-blue-100 transition-colors cursor-col-resize"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setIsResizing(true);
+          }}
+          title="Geser untuk ubah ukuran panel"
+        >
+          <div className="h-10 w-1 rounded-full bg-gray-300" />
+        </div>
+
         {/* Preview panel */}
         <div
-          className={`w-full lg:w-[58%] overflow-y-auto bg-slate-100 ${
+          className={`w-full lg:w-[calc(100%-var(--form-width)-8px)] lg:flex-none overflow-y-auto bg-slate-100 ${
             activeView === 'form' ? 'hidden lg:block' : 'block'
           }`}
         >

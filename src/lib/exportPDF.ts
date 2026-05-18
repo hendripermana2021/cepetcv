@@ -14,19 +14,55 @@ export async function exportToPDF(elementId: string, filename = 'CV') {
     height: element.scrollHeight,
   });
 
-  const imgData = canvas.toDataURL('image/jpeg', 0.95);
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: 'a4' });
 
   const pdfWidth = pdf.internal.pageSize.getWidth();
   const pdfHeight = pdf.internal.pageSize.getHeight();
-  const scale = pdfWidth / canvas.width;
-  const scaledHeight = canvas.height * scale;
+  const marginX = 18;
+  const marginY = 18;
+  const contentWidth = pdfWidth - marginX * 2;
+  const contentHeight = pdfHeight - marginY * 2;
 
-  let y = 0;
-  while (y < scaledHeight) {
-    if (y > 0) pdf.addPage();
-    pdf.addImage(imgData, 'JPEG', 0, -y, pdfWidth, scaledHeight);
-    y += pdfHeight;
+  // Convert one PDF page content height back into source canvas pixels.
+  const sourcePageHeight = Math.floor((contentHeight * canvas.width) / contentWidth);
+
+  let sourceY = 0;
+  let pageIndex = 0;
+
+  while (sourceY < canvas.height) {
+    if (pageIndex > 0) {
+      pdf.addPage();
+    }
+
+    const sliceHeight = Math.min(sourcePageHeight, canvas.height - sourceY);
+    const pageCanvas = document.createElement('canvas');
+    pageCanvas.width = canvas.width;
+    pageCanvas.height = sliceHeight;
+
+    const pageCtx = pageCanvas.getContext('2d');
+    if (!pageCtx) break;
+
+    pageCtx.fillStyle = '#ffffff';
+    pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+    pageCtx.drawImage(
+      canvas,
+      0,
+      sourceY,
+      canvas.width,
+      sliceHeight,
+      0,
+      0,
+      pageCanvas.width,
+      pageCanvas.height,
+    );
+
+    const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.95);
+    const renderHeight = (sliceHeight * contentWidth) / canvas.width;
+
+    pdf.addImage(pageImgData, 'JPEG', marginX, marginY, contentWidth, renderHeight);
+
+    sourceY += sliceHeight;
+    pageIndex += 1;
   }
 
   pdf.save(`${filename}.pdf`);
