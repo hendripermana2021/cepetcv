@@ -137,8 +137,14 @@ function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
 
 export default function CVForm({ data, onChange, lang }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>('personal');
+  const [isPhotoDragging, setIsPhotoDragging] = useState(false);
   const tabScrollRef = useRef<HTMLDivElement | null>(null);
+  const photoDragAreaRef = useRef<HTMLDivElement | null>(null);
+  const photoDragStartRef = useRef<{ mouseX: number; mouseY: number; cropX: number; cropY: number } | null>(null);
+  const photoCropRequestRef = useRef(0);
   const tr = translations[lang];
+
+  const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
   const scrollTabs = (direction: 'left' | 'right') => {
     if (!tabScrollRef.current) return;
@@ -249,6 +255,123 @@ export default function CVForm({ data, onChange, lang }: Props) {
   const delRef = (id: string) =>
     onChange({ references: data.references.filter((r) => r.id !== id) });
 
+  const cropPhotoToSquare = (dataUrl: string, cropX = 0, cropY = 0, zoom = 1) =>
+    new Promise<string>((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const side = Math.min(img.width, img.height);
+        const safeZoom = Math.max(1, Math.min(3, zoom));
+        const cropSide = Math.max(80, Math.floor(side / safeZoom));
+        const centerX = Math.floor((img.width - cropSide) / 2);
+        const centerY = Math.floor((img.height - cropSide) / 2);
+        const maxOffsetX = Math.floor((img.width - cropSide) / 2);
+        const maxOffsetY = Math.floor((img.height - cropSide) / 2);
+        const offsetX = Math.round((Math.max(-100, Math.min(100, cropX)) / 100) * maxOffsetX);
+        const offsetY = Math.round((Math.max(-100, Math.min(100, cropY)) / 100) * maxOffsetY);
+        const sx = Math.max(0, Math.min(img.width - cropSide, centerX + offsetX));
+        const sy = Math.max(0, Math.min(img.height - cropSide, centerY + offsetY));
+        const outputSize = 640;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = outputSize;
+        canvas.height = outputSize;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(dataUrl);
+          return;
+        }
+
+        ctx.drawImage(img, sx, sy, cropSide, cropSide, 0, 0, outputSize, outputSize);
+        resolve(canvas.toDataURL('image/jpeg', 0.92));
+      };
+
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+
+  const applyPhotoCrop = async ({
+    source,
+    cropX,
+    cropY,
+    zoom,
+  }: {
+    source: string;
+    cropX: number;
+    cropY: number;
+    zoom: number;
+  }) => {
+    const requestId = ++photoCropRequestRef.current;
+    const cropped = await cropPhotoToSquare(source, cropX, cropY, zoom);
+    if (requestId !== photoCropRequestRef.current) return;
+    onChange({
+      photoSource: source,
+      photo: cropped,
+      photoCropX: cropX,
+      photoCropY: cropY,
+      photoZoom: zoom,
+    });
+  };
+
+  const handlePhotoUpload = (file?: File) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      if (!result) return;
+      await applyPhotoCrop({ source: result, cropX: 0, cropY: 0, zoom: 1 });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePhotoDragStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!data.photoSource) return;
+    e.preventDefault();
+    photoDragStartRef.current = {
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      cropX: data.photoCropX ?? 0,
+      cropY: data.photoCropY ?? 0,
+    };
+    setIsPhotoDragging(true);
+  };
+
+  const handlePhotoDragMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isPhotoDragging || !photoDragStartRef.current || !data.photoSource) return;
+    const bounds = photoDragAreaRef.current?.getBoundingClientRect();
+    if (!bounds || bounds.width === 0 || bounds.height === 0) return;
+
+    const deltaX = e.clientX - photoDragStartRef.current.mouseX;
+    const deltaY = e.clientY - photoDragStartRef.current.mouseY;
+    const nextX = clamp(photoDragStartRef.current.cropX + (deltaX / bounds.width) * 200, -100, 100);
+    const nextY = clamp(photoDragStartRef.current.cropY + (deltaY / bounds.height) * 200, -100, 100);
+
+    void applyPhotoCrop({
+      source: data.photoSource,
+      cropX: nextX,
+      cropY: nextY,
+      zoom: data.photoZoom ?? 1,
+    });
+  };
+
+  const stopPhotoDrag = () => {
+    photoDragStartRef.current = null;
+    setIsPhotoDragging(false);
+  };
+
+  const adjustPhotoZoom = (direction: 'in' | 'out') => {
+    if (!data.photoSource) return;
+    const current = data.photoZoom ?? 1;
+    const delta = direction === 'in' ? 0.1 : -0.1;
+    const next = clamp(Number((current + delta).toFixed(2)), 1, 3);
+    void applyPhotoCrop({
+      source: data.photoSource,
+      cropX: data.photoCropX ?? 0,
+      cropY: data.photoCropY ?? 0,
+      zoom: next,
+    });
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Tab nav */}
@@ -314,6 +437,96 @@ export default function CVForm({ data, onChange, lang }: Props) {
               <TextInput label={tr.phone} value={data.phone} onChange={(v) => onChange({ phone: v })} placeholder="+62 812-3456-7890" />
             </div>
             <TextInput label={tr.location} value={data.location} onChange={(v) => onChange({ location: v })} placeholder="Jakarta, Indonesia" />
+            <Field label={tr.profilePhoto}>
+              <input
+                type="file"
+                accept="image/*"
+                aria-label={tr.profilePhoto}
+                title={tr.profilePhoto}
+                onChange={(e) => handlePhotoUpload(e.target.files?.[0])}
+                className="w-full px-3 py-2 text-sm text-gray-700 border border-gray-200 rounded-lg bg-white file:mr-3 file:rounded-md file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-xs file:font-medium"
+              />
+            </Field>
+            <p className="text-xs text-gray-400 -mt-2 mb-3">{tr.profilePhotoHint}</p>
+            <p className="text-xs text-gray-400 -mt-2 mb-3">{tr.profilePhotoAutoCrop}</p>
+            {data.photoSource && (
+              <div className="border border-gray-200 rounded-xl p-3 mb-3 bg-gray-50">
+                <p className="text-xs font-semibold text-gray-600 mb-3">{tr.photoCropTitle}</p>
+
+                <div className="mb-3 flex justify-center">
+                  <div
+                    ref={photoDragAreaRef}
+                    onMouseDown={handlePhotoDragStart}
+                    onMouseMove={handlePhotoDragMove}
+                    onMouseUp={stopPhotoDrag}
+                    onMouseLeave={stopPhotoDrag}
+                    className={`relative h-28 w-28 overflow-hidden rounded-lg border border-gray-200 bg-white ${isPhotoDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                    title={tr.photoDragHint}
+                  >
+                    <img
+                      src={data.photoSource}
+                      alt="Crop Preview"
+                      draggable={false}
+                      className="pointer-events-none absolute left-1/2 top-1/2 max-w-none select-none"
+                      style={{
+                        width: `${Math.round((data.photoZoom ?? 1) * 100)}%`,
+                        height: `${Math.round((data.photoZoom ?? 1) * 100)}%`,
+                        transform: `translate(calc(-50% + ${(data.photoCropX ?? 0) * 0.2}px), calc(-50% + ${(data.photoCropY ?? 0) * 0.2}px))`,
+                        objectFit: 'cover',
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <p className="text-xs text-gray-400 mb-3">{tr.photoDragHint}</p>
+
+                <Field label={tr.photoCropZoom}>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => adjustPhotoZoom('out')}
+                      className="h-9 w-9 rounded-md border border-gray-300 text-lg text-gray-700 hover:bg-gray-100"
+                      aria-label={`${tr.photoCropZoom} out`}
+                      title={`${tr.photoCropZoom} out`}
+                    >
+                      -
+                    </button>
+                    <div className="min-w-14 text-center text-xs text-gray-600 font-medium">
+                      {Math.round((data.photoZoom ?? 1) * 100)}%
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => adjustPhotoZoom('in')}
+                      className="h-9 w-9 rounded-md border border-gray-300 text-lg text-gray-700 hover:bg-gray-100"
+                      aria-label={`${tr.photoCropZoom} in`}
+                      title={`${tr.photoCropZoom} in`}
+                    >
+                      +
+                    </button>
+                  </div>
+                </Field>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!data.photoSource) return;
+                    void applyPhotoCrop({ source: data.photoSource, cropX: 0, cropY: 0, zoom: 1 });
+                  }}
+                  className="text-xs text-blue-600 hover:text-blue-700"
+                >
+                  {tr.photoCropReset}
+                </button>
+              </div>
+            )}
+            {data.photo && (
+              <button
+                type="button"
+                onClick={() => onChange({ photo: '', photoSource: '', photoCropX: 0, photoCropY: 0, photoZoom: 1 })}
+                className="mb-4 text-xs text-red-500 hover:text-red-600"
+              >
+                {tr.removePhoto}
+              </button>
+            )}
             <TextInput label={tr.nationality} value={data.nationality ?? ''} onChange={(v) => onChange({ nationality: v })} placeholder="Indonesia" />
             <TextInput label={tr.website} value={data.website ?? ''} onChange={(v) => onChange({ website: v })} placeholder="https://budisantoso.dev" />
             <TextInput label={tr.linkedin} value={data.linkedin ?? ''} onChange={(v) => onChange({ linkedin: v })} placeholder="linkedin.com/in/budisantoso" />
@@ -489,6 +702,7 @@ export default function CVForm({ data, onChange, lang }: Props) {
                 <option value="classic">{tr.templateLabels.classic}</option>
                 <option value="modern">{tr.templateLabels.modern}</option>
                 <option value="minimal">{tr.templateLabels.minimal}</option>
+                <option value="ats">{tr.templateLabels.ats}</option>
               </select>
             </Field>
 

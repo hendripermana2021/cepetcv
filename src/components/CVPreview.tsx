@@ -53,21 +53,23 @@ function Section({
   children,
   titleColor,
   dividerColor,
+  isAts,
 }: {
   title: string;
   children: React.ReactNode;
   titleColor: string;
   dividerColor: string;
+  isAts?: boolean;
 }) {
   return (
-    <div style={{ marginBottom: '24px' }}>
+    <div style={{ marginBottom: isAts ? '20px' : '24px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
         <h2
           style={{
-            fontSize: '11px',
+            fontSize: isAts ? '12px' : '11px',
             fontWeight: '700',
-            textTransform: 'uppercase',
-            letterSpacing: '1.5px',
+            textTransform: isAts ? 'none' : 'uppercase',
+            letterSpacing: isAts ? '0.3px' : '1.5px',
             color: titleColor,
             margin: 0,
             whiteSpace: 'nowrap',
@@ -75,7 +77,7 @@ function Section({
         >
           {title}
         </h2>
-        <div style={{ flex: 1, height: '1.5px', backgroundColor: dividerColor }} />
+        <div style={{ flex: 1, height: isAts ? '1px' : '1.5px', backgroundColor: dividerColor }} />
       </div>
       {children}
     </div>
@@ -105,9 +107,12 @@ export default function CVPreview({ data, lang }: Props) {
   const selectedFont = fontMap[data.fontFamily] || fontMap.arial;
   const isClassic = data.template === 'classic';
   const isModern = data.template === 'modern';
+  const isAts = data.template === 'ats';
+  const listBullet = isAts ? '-' : '•';
   const sectionTheme = {
-    titleColor: primaryColor,
-    dividerColor: hexToRgba(accentColor, 0.35),
+    titleColor: isAts ? '#111827' : primaryColor,
+    dividerColor: isAts ? '#d1d5db' : hexToRgba(accentColor, 0.35),
+    isAts,
   };
 
   if (!hasContent) {
@@ -142,58 +147,77 @@ export default function CVPreview({ data, lang }: Props) {
         minHeight: '1123px',
         backgroundColor: 'white',
         fontFamily: selectedFont,
-        fontSize: '13px',
+        fontSize: isAts ? '12px' : '13px',
         color: '#2d3748',
-        lineHeight: '1.6',
+        lineHeight: isAts ? '1.55' : '1.6',
       }}
     >
       {/* ── Header ─────────────────────────────────────────────── */}
       <div
         style={{
-          backgroundColor: isClassic ? primaryColor : '#ffffff',
-          color: isClassic ? 'white' : '#111827',
-          padding: isModern ? '28px 44px 24px' : '36px 44px 30px',
-          borderBottom: isClassic ? 'none' : `3px solid ${accentColor}`,
-          boxShadow: isModern ? '0 2px 10px rgba(15,23,42,0.06)' : 'none',
+          backgroundColor: isAts ? '#ffffff' : isClassic ? primaryColor : '#ffffff',
+          color: isAts ? '#111827' : isClassic ? 'white' : '#111827',
+          padding: isAts ? '30px 44px 20px' : isModern ? '28px 44px 24px' : '36px 44px 30px',
+          borderBottom: isAts ? '1px solid #e5e7eb' : isClassic ? 'none' : `3px solid ${accentColor}`,
+          boxShadow: isAts ? 'none' : isModern ? '0 2px 10px rgba(15,23,42,0.06)' : 'none',
         }}
       >
-        <h1
-          style={{
-            fontSize: '26px',
-            fontWeight: '700',
-            margin: '0 0 4px',
-            letterSpacing: '-0.3px',
-            color: isClassic ? 'white' : primaryColor,
-          }}
-        >
-          {data.name || 'Your Name'}
-        </h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px', alignItems: 'flex-start' }}>
+          <div style={{ flex: 1 }}>
+            <h1
+              style={{
+                fontSize: '26px',
+                fontWeight: '700',
+                margin: '0 0 4px',
+                letterSpacing: '-0.3px',
+                color: isAts ? '#111827' : isClassic ? 'white' : primaryColor,
+              }}
+            >
+              {data.name || 'Your Name'}
+            </h1>
 
-        {data.title && (
-          <p style={{ fontSize: '14px', color: isClassic ? hexToRgba(accentColor, 0.95) : accentColor, margin: '0 0 16px', fontWeight: '400' }}>
-            {data.title}
-          </p>
-        )}
+            {data.title && (
+              <p style={{ fontSize: '14px', color: isAts ? '#374151' : isClassic ? hexToRgba(accentColor, 0.95) : accentColor, margin: '0 0 16px', fontWeight: '400' }}>
+                {data.title}
+              </p>
+            )}
 
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '4px 20px',
-            fontSize: '11.5px',
-            color: isClassic ? hexToRgba(accentColor, 0.82) : '#475569',
-          }}
-        >
-          {data.email && <span>✉ {data.email}</span>}
-          {data.phone && <span>📞 {data.phone}</span>}
-          {data.location && <span>📍 {data.location}</span>}
-          {data.website && <span>🔗 {data.website}</span>}
-          {data.linkedin && <span>in {data.linkedin}</span>}
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '4px 20px',
+                fontSize: isAts ? '12px' : '11.5px',
+                color: isAts ? '#374151' : isClassic ? hexToRgba(accentColor, 0.82) : '#475569',
+              }}
+            >
+              {data.email && <span>{isAts ? `Email: ${data.email}` : `✉ ${data.email}`}</span>}
+              {data.phone && <span>{isAts ? `Phone: ${data.phone}` : `📞 ${data.phone}`}</span>}
+              {data.location && <span>{isAts ? `Location: ${data.location}` : `📍 ${data.location}`}</span>}
+              {data.website && <span>{isAts ? `Website: ${data.website}` : `🔗 ${data.website}`}</span>}
+              {data.linkedin && <span>{isAts ? `LinkedIn: ${data.linkedin}` : `in ${data.linkedin}`}</span>}
+            </div>
+          </div>
+
+          {!isAts && data.photo && (
+            <img
+              src={data.photo}
+              alt="Profile"
+              style={{
+                width: '96px',
+                height: '96px',
+                objectFit: 'cover',
+                borderRadius: '10px',
+                border: isClassic ? `2px solid ${hexToRgba(accentColor, 0.65)}` : '1px solid #d1d5db',
+                flexShrink: 0,
+              }}
+            />
+          )}
         </div>
       </div>
 
       {/* ── Body ───────────────────────────────────────────────── */}
-      <div style={{ padding: '32px 44px' }}>
+      <div style={{ padding: isAts ? '24px 44px 30px' : '32px 44px' }}>
         {formatSectionOrder[data.cvFormat].map((section) => {
           if (section === 'summary' && data.summary) {
             return (
@@ -206,7 +230,7 @@ export default function CVPreview({ data, lang }: Props) {
           if (section === 'international' && (data.nationality || data.desiredCountry || data.remotePreference || data.willingToRelocate)) {
             return (
               <Section key={section} title={tr.internationalSection} {...sectionTheme}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px 16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isAts ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '8px 16px' }}>
                   {data.nationality && (
                     <div style={{ fontSize: '12.5px', color: '#4a5568' }}>
                       <strong>{tr.nationality}:</strong> {data.nationality}
@@ -260,7 +284,7 @@ export default function CVPreview({ data, lang }: Props) {
                           marginTop: '2px',
                         }}
                       >
-                        {exp.startDate} — {exp.current ? tr.present : exp.endDate}
+                        {exp.startDate} - {exp.current ? tr.present : exp.endDate}
                       </div>
                     </div>
                     {exp.description && (
@@ -304,7 +328,7 @@ export default function CVPreview({ data, lang }: Props) {
                           marginTop: '2px',
                         }}
                       >
-                        {edu.startDate} — {edu.endDate}
+                        {edu.startDate} - {edu.endDate}
                       </div>
                     </div>
                   </div>
@@ -316,7 +340,7 @@ export default function CVPreview({ data, lang }: Props) {
           if (section === 'skills' && skills.length > 0) {
             return (
               <Section key={section} title={tr.skillsSection} {...sectionTheme}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '4px 18px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isAts ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '4px 18px' }}>
                   {skills.map((skill, i) => (
                     <div
                       key={`${skill}-${i}`}
@@ -328,7 +352,7 @@ export default function CVPreview({ data, lang }: Props) {
                         fontSize: '12.5px',
                       }}
                     >
-                      <span style={{ color: accentColor, fontWeight: '700', lineHeight: '1.4' }}>•</span>
+                      <span style={{ color: isAts ? '#111827' : accentColor, fontWeight: '700', lineHeight: '1.4' }}>{listBullet}</span>
                       <span style={{ lineHeight: '1.4' }}>{skill}</span>
                     </div>
                   ))}
@@ -387,7 +411,7 @@ export default function CVPreview({ data, lang }: Props) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
                       <div>
                         <div style={{ fontWeight: '700', fontSize: '13.5px' }}>{cert.name}</div>
-                        <div style={{ color: accentColor, fontSize: '12.5px' }}>{cert.issuer}</div>
+                        <div style={{ color: isAts ? '#374151' : accentColor, fontSize: '12.5px' }}>{cert.issuer}</div>
                         {cert.credentialId && (
                           <div style={{ fontSize: '11.5px', color: '#718096' }}>
                             ID: {cert.credentialId}
@@ -416,12 +440,12 @@ export default function CVPreview({ data, lang }: Props) {
                   <div key={ref.id} style={{ marginBottom: '14px' }}>
                     <div style={{ fontWeight: '700', fontSize: '13.5px' }}>{ref.name}</div>
                     <div style={{ color: accentColor, fontSize: '12.5px' }}>
-                      {ref.title}{ref.company ? ` · ${ref.company}` : ''}
+                      {ref.title}{ref.company ? ` - ${ref.company}` : ''}
                     </div>
                     <div style={{ fontSize: '11.5px', color: '#4a5568', marginTop: '2px' }}>
-                      {ref.email ? `✉ ${ref.email}` : ''}
+                      {ref.email ? (isAts ? `Email: ${ref.email}` : `✉ ${ref.email}`) : ''}
                       {ref.email && ref.phone ? ' · ' : ''}
-                      {ref.phone ? `📞 ${ref.phone}` : ''}
+                      {ref.phone ? (isAts ? `Phone: ${ref.phone}` : `📞 ${ref.phone}`) : ''}
                     </div>
                     {ref.relation && (
                       <div style={{ fontSize: '11.5px', color: '#718096' }}>{ref.relation}</div>
@@ -441,7 +465,7 @@ export default function CVPreview({ data, lang }: Props) {
                   </div>
                 )}
                 {atsKeywords.length > 0 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '4px 18px', marginBottom: '8px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isAts ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '4px 18px', marginBottom: '8px' }}>
                     {atsKeywords.map((keyword, idx) => (
                       <div
                         key={`${keyword}-${idx}`}
@@ -453,7 +477,7 @@ export default function CVPreview({ data, lang }: Props) {
                           fontSize: '11.5px',
                         }}
                       >
-                        <span style={{ color: accentColor, fontWeight: '700', lineHeight: '1.4' }}>•</span>
+                        <span style={{ color: isAts ? '#111827' : accentColor, fontWeight: '700', lineHeight: '1.4' }}>{listBullet}</span>
                         <span style={{ lineHeight: '1.4' }}>{keyword}</span>
                       </div>
                     ))}
@@ -465,7 +489,7 @@ export default function CVPreview({ data, lang }: Props) {
                   </div>
                 )}
                 {(data.expectedSalary || data.noticePeriod) && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '6px 12px', marginTop: '6px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isAts ? '1fr' : 'repeat(2, minmax(0, 1fr))', gap: '6px 12px', marginTop: '6px' }}>
                     {data.expectedSalary && (
                       <div style={{ fontSize: '12px', color: '#4a5568' }}>
                         <strong>{tr.expectedSalary}:</strong> {data.expectedSalary} {data.salaryCurrency || ''}

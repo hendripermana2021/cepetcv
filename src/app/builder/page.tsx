@@ -50,8 +50,12 @@ export default function BuilderPage() {
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      const { exportToPDF } = await import('@/lib/exportPDF');
-      await exportToPDF('cv-preview', `CV-${cvData.name || 'CepetCV'}`);
+      const { exportToPDF, exportToATSTextPDF } = await import('@/lib/exportPDF');
+      if (cvData.template === 'ats') {
+        exportToATSTextPDF(cvData, `CV-ATS-${cvData.name || 'CepetCV'}`);
+      } else {
+        await exportToPDF('cv-preview', `CV-${cvData.name || 'CepetCV'}`);
+      }
     } finally {
       setIsExporting(false);
     }

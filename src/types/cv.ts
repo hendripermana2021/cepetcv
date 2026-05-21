@@ -53,7 +53,7 @@ export interface Reference {
 }
 
 export type CVFormat = 'id' | 'us' | 'eu' | 'uk';
-export type CVTemplate = 'classic' | 'modern' | 'minimal';
+export type CVTemplate = 'classic' | 'modern' | 'minimal' | 'ats';
 export type CVFont = 'arial' | 'georgia' | 'poppins';
 
 export interface CVData {
@@ -62,6 +62,11 @@ export interface CVData {
   email: string;
   phone: string;
   location: string;
+  photo?: string;
+  photoSource?: string;
+  photoCropX?: number;
+  photoCropY?: number;
+  photoZoom?: number;
   nationality?: string;
   desiredCountry?: string;
   cvFormat: CVFormat;
@@ -95,6 +100,11 @@ export const defaultCVData: CVData = {
   email: '',
   phone: '',
   location: '',
+  photo: '',
+  photoSource: '',
+  photoCropX: 0,
+  photoCropY: 0,
+  photoZoom: 1,
   nationality: '',
   desiredCountry: '',
   cvFormat: 'id',

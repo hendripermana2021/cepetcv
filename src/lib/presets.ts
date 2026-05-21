@@ -96,6 +96,7 @@ export const indonesiaPreset: CVData = {
 
 export const globalPreset: CVData = {
   ...defaultCVData,
+  template: 'ats',
   name: 'Raka Pratama',
   title: 'Frontend Engineer (International Remote)',
   email: 'raka.pratama@email.com',
